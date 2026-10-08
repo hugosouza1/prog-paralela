@@ -2,54 +2,36 @@
 #include <stdlib.h>
 #include <math.h>
 
-int ehPrimo(int x){ 
-    long long contador = 1;
-    for(int i = 2; i < x; ++i){
-        if(x % i == 0) contador++;
-    }
-    return contador == 1;
-}
-
-typedef struct {
-    long long first; // valor
-    int second; // validade
-} Pair;
 
 int main(){
-    long long n = 0;
+    unsigned long long n = 0;
     scanf("%lld", &n);
     
-    --n; // [2, n]
+    ++n;
 
-    Pair *numeros = (Pair*)malloc(n * sizeof(Pair));
+    char *numeros = (char*)malloc((n) * sizeof(char));
 
-    long long valor_atual = 2;
-    for(int i = 0; i < n; ++i){
-        numeros[i].first = valor_atual++;
-        numeros[i].second = 1;
-    }
+    for(unsigned long long i = 0; i < n; ++i) numeros[i] = 'v';
 
     // ---------------------------------------------- //
 
-    for(int i = 0; i < sqrt(n); ++i){
-        if(numeros[i].second){
-            if(ehPrimo(numeros[i].first)){
-                for(int j = i+numeros[i].first; j < n; j+=numeros[i].first) numeros[j].second = 0;
-            } else {
-                numeros[i].second = 0;
-            } 
+    for(unsigned long long i = 2; i < sqrt(n); ++i){
+        if(numeros[i] == 'v'){
+            for(unsigned long long k = i+i; k < n; k += i){
+                numeros[k] = 0;
+            }
         }
     }
                 
     // ---------------------------------------------- //
 
     printf("\nNumeros primos: ");
-    for(int i = 0; i < n; ++i){
-        if(numeros[i].second){
-            if(i==0)
-                printf("%lld", numeros[i].first);
+    for(unsigned long long i = 2; i < n; ++i){
+        if(numeros[i] == 'v'){
+            if(i==2)
+                printf("%lld", i);
             else 
-                printf(", %lld", numeros[i].first);
+                printf(", %lld", i);
         }
     }
     printf("\n\n");
