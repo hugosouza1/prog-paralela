@@ -5,7 +5,7 @@
 
 int main(){
     unsigned long long n = 0;
-    scanf("%lld", &n);
+    scanf("%llu", &n);
     
     ++n;
 
@@ -15,9 +15,9 @@ int main(){
 
     // ---------------------------------------------- //
 
-    for(unsigned long long i = 2; i < sqrt(n); ++i){
+    for(unsigned long long i = 2; i*i < n; ++i){
         if(numeros[i] == 'v'){
-            for(unsigned long long k = i+i; k < n; k += i){
+            for(unsigned long long k = i*i; k < n; k += i){
                 numeros[k] = 0;
             }
         }
@@ -25,16 +25,21 @@ int main(){
                 
     // ---------------------------------------------- //
 
-    printf("\nNumeros primos: ");
+    FILE *arquivo = fopen("primos.txt", "w");
+    if(arquivo == NULL){
+        printf("Erro na criação do arquivo!\n");
+        free(numeros);
+        return 1;
+    }
+
     for(unsigned long long i = 2; i < n; ++i){
         if(numeros[i] == 'v'){
-            if(i==2)
-                printf("%lld", i);
-            else 
-                printf(", %lld", i);
+            if(i == 2 ) fprintf(arquivo, "%llu", i);
+            else fprintf(arquivo, ", %llu", i);
         }
     }
-    printf("\n\n");
+
+    fclose(arquivo);
 
 
     free(numeros);
