@@ -17,7 +17,7 @@ int main(){
 
     for(unsigned long long i = 2; i*i < n; ++i){
         if(numeros[i] == 'v'){
-            for(unsigned long long k = i*i; k < n; k += i){
+            for(unsigned long long k = i+i; k < n; k += i){
                 numeros[k] = 0;
             }
         }
@@ -32,15 +32,26 @@ int main(){
         return 1;
     }
 
-    for(unsigned long long i = 2; i < n; ++i){
-        if(numeros[i] == 'v'){
-            if(i == 2 ) fprintf(arquivo, "%llu", i);
-            else fprintf(arquivo, ", %llu", i);
+
+    unsigned long long contador = 0;
+
+    for (unsigned long long i = 2; i < n; ++i) {
+        if (numeros[i] == 'v') {
+            if (contador > 0) {
+                if (contador % 25 == 0) {
+                    fprintf(arquivo, "\n");
+                } else {
+                    fprintf(arquivo, ", ");
+                }
+            }
+
+            fprintf(arquivo, "%llu", i);
+            ++contador;
         }
     }
 
+    fprintf(arquivo, "\n");
     fclose(arquivo);
-
 
     free(numeros);
     return 0;

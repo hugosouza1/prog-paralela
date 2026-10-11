@@ -11,3 +11,7 @@ all:
 
 clean:
 	rm -f $(POGRAMA) gmon.out analise.txt
+
+paracatu:
+	mpicc paracatu.c -o paracatu.exe -lm
+	mpirun -np 4 paracatu.exe > paracatu.txt
