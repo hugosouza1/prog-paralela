@@ -17,7 +17,7 @@ int main(){
 
     for(unsigned long long i = 2; i*i < n; ++i){
         if(numeros[i] == 'v'){
-            for(unsigned long long k = i+i; k < n; k += i){
+            for(unsigned long long k = i*i; k < n; k += i){
                 numeros[k] = 0;
             }
         }
