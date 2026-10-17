@@ -1,17 +1,22 @@
 CC = gcc
-CFLAGS = -O0 -pg -Wall -Wextra
+CFLAGS = -O0 -pg -fno-inline -fno-inline-functions-called-once 
 LDFLAGS = -lm
 
-POGRAMA = sequencial
+T?=10
+size?=4
 
-all:
-	$(CC) $(CFLAGS) $(POGRAMA).c -o $(POGRAMA) $(LDFLAGS)
-	./$(POGRAMA)
-	gprof $(POGRAMA) gmon.out > analise.txt
+log=no
+
+.PHONY: sequencial paralelo
+
+sequencial:
+	$(CC) $(CFLAGS) $@.c -o $@.exe $(LDFLAGS)
+	./$@.exe $(T) $(log)
+	gprof -b -l $@.exe gmon.out > analise.txt
 
 clean:
-	rm -f $(POGRAMA) gmon.out analise.txt
+	rm -f *.exe gmon.out analise.txt primos.txt
 
-paracatu:
-	mpicc paracatu.c -o paracatu.exe -lm
-	mpirun -np 4 paracatu.exe > paracatu.txt
+paralelo:
+	mpicc -O0 $@.c -o $@.exe -lm
+	mpirun -np $(size) ./$@.exe $(T) $(log)
