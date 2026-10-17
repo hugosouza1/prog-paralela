@@ -107,8 +107,37 @@ int main(int argc, char **argv) {
         MPI_Send(primosLocais, (int)k, MPI_LLU, 0, 1, MPI_COMM_WORLD);
 
     } else {
-
         FILE *arquivo; 
+        llu **resultados = (llu**)malloc(size * sizeof(llu*));
+        llu *quantidades = (llu*)malloc(size * sizeof(llu));
+        resultados[0] = primosLocais;
+        quantidades[0] = k;
+        for(int recebidos = 1; recebidos < size; recebidos++) {
+            llu quantidade;
+            MPI_Status status;
+
+            MPI_Recv(
+                &quantidade, 1, MPI_LLU,
+                MPI_ANY_SOURCE, 0, MPI_COMM_WORLD,
+                &status
+            );
+
+            int processo = status.MPI_SOURCE;
+
+            quantidades[processo] = quantidade;
+            resultados[processo] = malloc(quantidade * sizeof(llu));
+
+            if (quantidade > 0 && resultados[processo] == NULL) {
+                MPI_Abort(MPI_COMM_WORLD, 1);
+            }
+
+            MPI_Recv(
+                resultados[processo], (int)quantidade, MPI_LLU,
+                processo, 1, MPI_COMM_WORLD,
+                MPI_STATUS_IGNORE
+            );
+        }
+
         if(log){
             arquivo = fopen("primos.txt", "w");
             
@@ -116,35 +145,15 @@ int main(int argc, char **argv) {
                 perror("Erro ao abrir o arquivo");
                 MPI_Abort(MPI_COMM_WORLD, 1);
             }
-        }
-        
-        if(log)
-            for(llu i = 0; i < k; i++) {
-                fprintf(arquivo, "%llu | \n", primosLocais[i]);
+
+            for(int i = 0; i < size; i++) {
+              for(int j = 0; j < quantidades[i]; j++) {
+                fprintf(arquivo, "%llu | \n", resultados[i][j]);
+              }
             }
-
-        for(int processo = 1; processo < size; processo++) {
-            llu quantidade;
-            MPI_Recv(&quantidade, 1, MPI_LLU, processo, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-            llu *recebidos = (llu*)malloc(quantidade * sizeof(llu));
-            if(recebidos == NULL) {fprintf(stderr, "Erro alocação recebidos\n"); exit(EXIT_FAILURE);}
-
-
-            if (quantidade > 0 && recebidos == NULL && log) {
-                fclose(arquivo);
-                MPI_Abort(MPI_COMM_WORLD, 1);
-            }
-
-            MPI_Recv(recebidos, (int)quantidade, MPI_LLU, processo, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            
-            if(log)
-                for (llu i = 0; i < quantidade; i++) {
-                    fprintf(arquivo, "%llu | \n", recebidos[i]);
-                }
-
-            free(recebidos);
         }
+        free(resultados);
+        free(quantidades);
     }
 
     free(primosLocais);

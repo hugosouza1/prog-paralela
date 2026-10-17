@@ -5,7 +5,7 @@ LDFLAGS = -lm
 T?=10
 size?=4
 
-log=no
+log=yes
 
 .PHONY: sequencial paralelo
 
