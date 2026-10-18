@@ -16,12 +16,17 @@ void inicializa(char *numeros, unsigned long long n) {
     for (unsigned long long i = 0; i < n; ++i) numeros[i] = 'v';
 }
 
+void marcaMultiplos(char *numeros, unsigned long long n, unsigned long long i){
+    for (unsigned long long k = i * i; k < n; k += i) {
+        numeros[k] = 0;
+    }
+
+}
+
 void crivo(char *numeros, unsigned long long n) {
     for (unsigned long long i = 2; i * i < n; ++i) {
         if (numeros[i] == 'v') {
-            for (unsigned long long k = i * i; k < n; k += i) {
-                numeros[k] = 0;
-            }
+            marcaMultiplos(numeros, n, i);
         }
     }
 }
@@ -48,7 +53,7 @@ int main(int argc, char **argv) {
 
     unsigned long long n = strtoull(argv[1], NULL, 10);
 
-    int log = (argc > 2 && strcmp(argv[2], "yes") == 0);
+    int log = (argc > 2 && strcmp(argv[2], "true") == 0);
 
     ++n;
 

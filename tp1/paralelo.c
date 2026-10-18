@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
 
-    int log = (argc > 2 && strcmp(argv[2], "yes") == 0);
+    int log = (argc > 2 && strcmp(argv[2], "true") == 0);
 
 
     llu n = strtoull(argv[1], NULL, 10);
@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
 
             for(int i = 0; i < size; i++) {
               for(int j = 0; j < quantidades[i]; j++) {
-                fprintf(arquivo, "%llu | \n", resultados[i][j]);
+                fprintf(arquivo, "%llu | ", resultados[i][j]);
               }
             }
 
