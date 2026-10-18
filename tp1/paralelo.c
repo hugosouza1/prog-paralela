@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
     int log = (argc > 2 && strcmp(argv[2], "yes") == 0);
 
 
-    llu n = strtoll(argv[1], &argv[1], 10);
+    llu n = strtoull(argv[1], NULL, 10);
 
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -42,22 +42,16 @@ int main(int argc, char **argv) {
     char *numeros = (char*)malloc(n * sizeof(char));
     llu* primosBase = (llu*)malloc(raizN * sizeof(llu));
     llu baseQtd = 0;
-
-    if(numeros == NULL || primosBase == NULL){
-        fprintf(stderr, "Falha alocação num/primos\n");
-        exit(EXIT_FAILURE);
-    } 
-
     
+    if(numeros == NULL || primosBase == NULL){fprintf(stderr, "Falha alocação num/primos\n"); exit(EXIT_FAILURE);} 
+    
+    memset(numeros, 1, n);
     
     if(rank == 0) {
-        for(llu i = 2; i < n; i++) {
-            numeros[i] = 'v';
-        }
-        numeros[0] = 0;
-        numeros[1] = 0;
+        numeros[0] = 0; numeros[1] = 0;
+
         for(llu i = 2; i <= raizN; i++) {
-            if(numeros[i] == 'v') {
+            if(numeros[i]) {
                 primosBase[baseQtd++] = i;
 
                 for(llu j = i*i; j <= raizN; j += i) {
@@ -67,75 +61,61 @@ int main(int argc, char **argv) {
         }
     }
 
-    MPI_Bcast(numeros, (int)n, MPI_CHAR, 0, MPI_COMM_WORLD);
+
     MPI_Bcast(&baseQtd, 1, MPI_LLU, 0, MPI_COMM_WORLD);
     MPI_Bcast(primosBase, (int)baseQtd, MPI_LLU, 0, MPI_COMM_WORLD);
-
+    
     llu inicio = rank * (n / size);
     llu fim = (rank == size-1) ? n : (rank + 1) * (n / size);
     llu tamanho = fim - inicio;
+    
+    llu *primosLocais = (llu*)malloc(tamanho * sizeof(llu));
+    if(primosLocais == NULL) {fprintf(stderr, "Erro alocação primosLocas\n"); exit(EXIT_FAILURE);}
 
+    llu k = 0;
+    
     for(llu p = 0; p < baseQtd; ++p) {
         llu primo = primosBase[p];
         llu multiplo = ((inicio + primo - 1) / primo) * primo;
 
-        if (multiplo < primo * primo) {
-            multiplo = primo * primo;
-        }
-
-        for(llu j = multiplo; j < fim; j += primo) {
-            numeros[j] = 0;
-        }
+        llu start = multiplo < primo * primo ? primo * primo : multiplo;
+        for (llu j = start; j < fim; j += primo) numeros[j] = 0;
     }
-
-    llu *primosLocais = (llu*)malloc(tamanho * sizeof(llu));
-
-    if(primosLocais == NULL) {
-        fprintf(stderr, "Erro alocação primosLocas\n");
-        exit(EXIT_FAILURE);
-    }
-    llu k = 0;
-
-    for (llu i = inicio; i < fim; i++) {
-        if (i >= 2 && numeros[i] == 'v') {
+    
+    for (llu i = inicio; i < fim; i++) 
+        if (i >= 2 && numeros[i]) 
             primosLocais[k++] = i;
-        }
-    }
+        
+
 
     if (rank != 0) {
         MPI_Send(&k, 1, MPI_LLU, 0, 0, MPI_COMM_WORLD);
         MPI_Send(primosLocais, (int)k, MPI_LLU, 0, 1, MPI_COMM_WORLD);
 
+        free(primosLocais);
+
     } else {
         FILE *arquivo; 
         llu **resultados = (llu**)malloc(size * sizeof(llu*));
         llu *quantidades = (llu*)malloc(size * sizeof(llu));
-        resultados[0] = primosLocais;
-        quantidades[0] = k;
+        resultados[0] = primosLocais; quantidades[0] = k;
+
         for(int recebidos = 1; recebidos < size; recebidos++) {
             llu quantidade;
             MPI_Status status;
 
-            MPI_Recv(
-                &quantidade, 1, MPI_LLU,
-                MPI_ANY_SOURCE, 0, MPI_COMM_WORLD,
-                &status
-            );
+            MPI_Recv(&quantidade, 1, MPI_LLU, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
 
             int processo = status.MPI_SOURCE;
 
             quantidades[processo] = quantidade;
-            resultados[processo] = malloc(quantidade * sizeof(llu));
+            resultados[processo] = (llu*)malloc(quantidade * sizeof(llu));
 
             if (quantidade > 0 && resultados[processo] == NULL) {
                 MPI_Abort(MPI_COMM_WORLD, 1);
             }
 
-            MPI_Recv(
-                resultados[processo], (int)quantidade, MPI_LLU,
-                processo, 1, MPI_COMM_WORLD,
-                MPI_STATUS_IGNORE
-            );
+            MPI_Recv(resultados[processo], (int)quantidade, MPI_LLU, processo, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
 
         if(log){
@@ -151,12 +131,16 @@ int main(int argc, char **argv) {
                 fprintf(arquivo, "%llu | \n", resultados[i][j]);
               }
             }
+
+            fclose(arquivo);
         }
+
+        for(int f = 1; f < size; ++f) free(resultados[f]);
+        free(primosLocais);
         free(resultados);
         free(quantidades);
     }
 
-    free(primosLocais);
     free(primosBase);
     free(numeros);
 
