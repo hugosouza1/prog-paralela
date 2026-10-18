@@ -24,6 +24,11 @@ int main(int argc, char **argv) {
 
     llu n = strtoull(argv[1], NULL, 10);
 
+    if(n < 2) {
+        fprintf(stderr, "ERRO: N deve ser pelo menos 2.");
+        MPI_Abort(MPI_COMM_WORLD, 1);
+    }
+
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -37,38 +42,46 @@ int main(int argc, char **argv) {
     while (raizN * raizN >= n) --raizN;               
     while ((raizN + 1) * (raizN + 1) < n) ++raizN;
 
-    char *numeros = (char*)malloc(n * sizeof(char));
-    llu* primosBase = (llu*)malloc(raizN * sizeof(llu));
+    llu inicio = rank * (n / size);
+    llu fim = (rank == size-1) ? n : (rank + 1) * (n / size);
+    llu tamanho = fim - inicio;
+
+    char *numeros = (char*)malloc(tamanho + 1);
+    llu* primosBase = (llu*)malloc((raizN + 1) * sizeof(llu));
     llu baseQtd = 0;
     
-    if(numeros == NULL || primosBase == NULL){fprintf(stderr, "Falha alocação num/primos\n"); exit(EXIT_FAILURE);} 
+    if(numeros == NULL || primosBase == NULL){fprintf(stderr, "Falha alocação num/primos\n"); MPI_Abort(MPI_COMM_WORLD, 1);} 
     
-    memset(numeros, 1, n);
-    
+    for(llu i = 0; i < tamanho; ++i) numeros[i] = 1;
+
     if(rank == 0) {
-        numeros[0] = 0; numeros[1] = 0;
+        char *crivoBase = (char*)malloc(raizN + 1);
+        if(crivoBase == NULL){fprintf(stderr, "Falha alocação crivoBase\n"); MPI_Abort(MPI_COMM_WORLD, 1);}
+
+        for(llu i = 0; i <= raizN; i++) crivoBase[i] = 1;
+        crivoBase[0] = 0; 
+        if(raizN >= 1) crivoBase[1] = 0;
 
         for(llu i = 2; i <= raizN; i++) {
-            if(numeros[i]) {
+            if(crivoBase[i]) {
                 primosBase[baseQtd++] = i;
 
                 for(llu j = i*i; j <= raizN; j += i) {
-                    numeros[j] = 0;
+                    crivoBase[j] = 0;
                 }
             }
         }
+
+        free(crivoBase);
     }
 
 
     MPI_Bcast(&baseQtd, 1, MPI_LLU, 0, MPI_COMM_WORLD);
     MPI_Bcast(primosBase, (int)baseQtd, MPI_LLU, 0, MPI_COMM_WORLD);
     
-    llu inicio = rank * (n / size);
-    llu fim = (rank == size-1) ? n : (rank + 1) * (n / size);
-    llu tamanho = fim - inicio;
     
-    llu *primosLocais = (llu*)malloc(tamanho * sizeof(llu));
-    if(primosLocais == NULL) {fprintf(stderr, "Erro alocação primosLocas\n"); exit(EXIT_FAILURE);}
+    llu *primosLocais = (llu*)malloc((tamanho + 1) * sizeof(llu));
+    if(primosLocais == NULL) {fprintf(stderr, "Erro alocação primosLocas\n"); MPI_Abort(MPI_COMM_WORLD, 1);}
 
     llu k = 0;
     
@@ -77,11 +90,11 @@ int main(int argc, char **argv) {
         llu multiplo = ((inicio + primo - 1) / primo) * primo;
 
         llu start = multiplo < primo * primo ? primo * primo : multiplo;
-        for (llu j = start; j < fim; j += primo) numeros[j] = 0;
+        for (llu j = start; j < fim; j += primo) numeros[j - inicio] = 0;
     }
     
     for (llu i = inicio; i < fim; i++) 
-        if (i >= 2 && numeros[i]) 
+        if (i >= 2 && numeros[i - inicio]) 
             primosLocais[k++] = i;
         
 
@@ -107,9 +120,9 @@ int main(int argc, char **argv) {
             int processo = status.MPI_SOURCE;
 
             quantidades[processo] = quantidade;
-            resultados[processo] = (llu*)malloc(quantidade * sizeof(llu));
+            resultados[processo] = (llu*)malloc((quantidade + 1) * sizeof(llu));
 
-            if (quantidade > 0 && resultados[processo] == NULL) {
+            if (resultados[processo] == NULL) {
                 MPI_Abort(MPI_COMM_WORLD, 1);
             }
 
@@ -125,7 +138,7 @@ int main(int argc, char **argv) {
             }
 
             for(int i = 0; i < size; i++) {
-              for(int j = 0; j < quantidades[i]; j++) {
+              for(llu j = 0; j < quantidades[i]; j++) {
                 fprintf(arquivo, "%llu | ", resultados[i][j]);
               }
             }
