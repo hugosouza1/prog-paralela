@@ -23,6 +23,7 @@ int main(int argc, char **argv) {
 
 
     llu n = strtoull(argv[1], NULL, 10);
+    ++n;
 
     if(n < 2) {
         fprintf(stderr, "ERRO: N deve ser pelo menos 2.");
@@ -139,7 +140,7 @@ int main(int argc, char **argv) {
 
             for(int i = 0; i < size; i++) {
               for(llu j = 0; j < quantidades[i]; j++) {
-                fprintf(arquivo, "%llu | ", resultados[i][j]);
+                fprintf(arquivo, "%llu\n", resultados[i][j]);
               }
             }
 
@@ -159,7 +160,7 @@ int main(int argc, char **argv) {
     double local = MPI_Wtime() - t0, total;
     MPI_Reduce(&local, &total, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
-    if (rank == 0) printf("n = %llu, size, %d, time %.6f\n", n, size, total);
+    if (rank == 0) printf("n = %llu, size, %d, time %.6f\n", n-1, size, total);
 
     MPI_Finalize();
     return 0;
