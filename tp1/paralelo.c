@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
 
 
     if (rank != 0) {
-        // MPI_Send(&k, 1, MPI_LLU, 0, 0, MPI_COMM_WORLD);
+        MPI_Send(&k, 1, MPI_LLU, 0, 0, MPI_COMM_WORLD);
         MPI_Send(primosLocais, (int)k, MPI_LLU, 0, 1, MPI_COMM_WORLD);
 
         free(primosLocais);
@@ -99,13 +99,13 @@ int main(int argc, char **argv) {
         resultados[0] = primosLocais; quantidades[0] = k;
 
         for(int recebidos = 1; recebidos < size; recebidos++) {
+            llu quantidade;
             MPI_Status status;
-            int quantidade; // get_cont véio
 
-            MPI_Probe(MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status);
-            MPI_Get_count(&status, MPI_UNSIGNED_LONG_LONG, &quantidade);
+            MPI_Recv(&quantidade, 1, MPI_LLU, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
 
             int processo = status.MPI_SOURCE;
+
             quantidades[processo] = quantidade;
             resultados[processo] = (llu*)malloc(quantidade * sizeof(llu));
 
