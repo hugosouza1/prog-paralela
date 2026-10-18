@@ -131,7 +131,6 @@ int main(int argc, char **argv) {
             MPI_Recv(resultados[processo], (int)quantidade, MPI_LLU, processo, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
 
-        printf("LOG %d\n", log);
         if(log){
             arquivo = fopen("primos.txt", "w");
             
