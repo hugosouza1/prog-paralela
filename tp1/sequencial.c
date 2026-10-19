@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
     double t1 = agora();
 
     // Saída
-    printf("n = %llu, tempo = %.6f\n", n - 1, t1 - t0);
+    printf("%llu %.6f\n", n - 1, t1 - t0);
 
     if (log && escreve_primos(numeros, n) != 0) {
         fprintf(stderr, "Erro na criação do arquivo!\n");

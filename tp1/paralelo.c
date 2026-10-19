@@ -160,7 +160,7 @@ int main(int argc, char **argv) {
     double local = MPI_Wtime() - t0, total;
     MPI_Reduce(&local, &total, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
-    if (rank == 0) printf("n = %llu, size, %d, time %.6f\n", n-1, size, total);
+    if (rank == 0) printf("%llu %d %.6f\n", n-1, size, total);
 
     MPI_Finalize();
     return 0;

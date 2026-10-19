@@ -1,22 +1,27 @@
 CC = gcc
-CFLAGS = -O0 -pg -fno-inline -fno-inline-functions-called-once 
+CFLAGS = -O2 -pg -fno-inline -fno-inline-functions-called-once 
 LDFLAGS = -lm
 
-T?=10
+e?=10
 size?=4
 
 log=true
 
 .PHONY: sequencial paralelo
 
+all:
+	gcc -O2 sequencial.c -o sequencial.exe $(LDFLAGS)
+	mpicc -O2 paralelo.c -o paralelo.exe -lm
+
+
 sequencial:
 	$(CC) $(CFLAGS) $@.c -o $@.exe $(LDFLAGS)
-	./$@.exe $(T) $(log)
+	./$@.exe $(e) $(log)
 	gprof -b -l $@.exe gmon.out > analise.txt
 
 clean:
 	rm -f *.exe gmon.out analise.txt primos.txt
 
 paralelo:
-	mpicc -O0 $@.c -o $@.exe -lm
-	mpirun -np $(size) ./$@.exe $(T) $(log)
+	mpicc -O2 $@.c -o $@.exe -lm
+	mpirun -np $(size) ./$@.exe $(e) $(log)
