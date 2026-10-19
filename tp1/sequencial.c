@@ -5,7 +5,7 @@
 #include <time.h>
 
 
-double agora() {
+double timestampAtual() {
     struct timespec t;
     clock_gettime(CLOCK_MONOTONIC, &t);
 
@@ -31,7 +31,7 @@ void crivo(char *numeros, unsigned long long n) {
     }
 }
 
-int escreve_primos(char *numeros, unsigned long long n) {
+int escrevePrimos(char *numeros, unsigned long long n) {
     FILE *arquivo = fopen("primos.txt", "w");
     if (arquivo == NULL) return 1;
 
@@ -65,15 +65,15 @@ int main(int argc, char **argv) {
     }
 
     // Medição: inicialização + crivo 
-    double t0 = agora();
+    double t0 = timestampAtual();
     inicializa(numeros, n);
     crivo(numeros, n);
-    double t1 = agora();
+    double t1 = timestampAtual();
 
     // Saída
     printf("n = %llu, tempo = %.6f\n", n - 1, t1 - t0);
 
-    if (log && escreve_primos(numeros, n) != 0) {
+    if (log && escrevePrimos(numeros, n) != 0) {
         fprintf(stderr, "Erro na criação do arquivo!\n");
         free(numeros);
         return 1;
