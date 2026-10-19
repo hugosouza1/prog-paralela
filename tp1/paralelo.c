@@ -15,7 +15,7 @@ int main(int argc, char **argv) {
 
 
     if(argc < 2) {
-        fprintf(stderr, "ERRO: valor N não informado por parâmetro.");
+        fprintf(stderr, "ERRO: valor N não informado por parâmetro.\n");
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
 
@@ -23,12 +23,13 @@ int main(int argc, char **argv) {
 
 
     llu n = strtoull(argv[1], NULL, 10);
-    ++n;
 
     if(n < 2) {
-        fprintf(stderr, "ERRO: N deve ser pelo menos 2.");
+        fprintf(stderr, "ERRO: N deve ser pelo menos 2.\n");
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
+
+    ++n;
 
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
