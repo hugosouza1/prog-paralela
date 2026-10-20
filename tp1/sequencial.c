@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 
+#define llu unsigned long long
 
 double timestampAtual() {
     struct timespec t;
@@ -12,33 +13,33 @@ double timestampAtual() {
     return t.tv_sec + t.tv_nsec / 1e9;
 }
 
-void inicializa(char *numeros, unsigned long long n) {
-    for (unsigned long long i = 0; i < n; ++i) numeros[i] = 'v';
+void inicializa(char *numeros, llu n) {
+    for (llu i = 0; i < n; ++i) numeros[i] = 'v';
 }
 
-void marcaMultiplos(char *numeros, unsigned long long n, unsigned long long i){
-    for (unsigned long long k = i * i; k < n; k += i) {
+void marcaMultiplos(char *numeros, llu n, llu i){
+    for (llu k = i * i; k < n; k += i) {
         numeros[k] = 0;
     }
 
 }
 
-int crivo(char *numeros, unsigned long long n, unsigned long long **primos, unsigned long long *qtd) {
-    for (unsigned long long i = 2; i * i < n; ++i) {
+int crivo(char *numeros, llu n, llu **primos, llu *qtd) {
+    for (llu i = 2; i * i < n; ++i) {
         if (numeros[i] == 'v') {
             marcaMultiplos(numeros, n, i);
         }
     }
 
-    unsigned long long cap = 1024, k = 0;
-    unsigned long long *v = (unsigned long long *)malloc(cap * sizeof(unsigned long long));
+    llu cap = 1024, k = 0;
+    llu *v = (llu *)malloc(cap * sizeof(llu));
     if (v == NULL) return 1;
 
-    for (unsigned long long i = 2; i < n; ++i) {
+    for (llu i = 2; i < n; ++i) {
         if (numeros[i] == 'v') {
             if (k == cap) {
                 cap *= 2;
-                unsigned long long *tmp = (unsigned long long *)realloc(v, cap * sizeof(unsigned long long));
+                llu *tmp = (llu *)realloc(v, cap * sizeof(llu));
                 if (tmp == NULL) { free(v); return 1; }
                 v = tmp;
             }
@@ -47,7 +48,7 @@ int crivo(char *numeros, unsigned long long n, unsigned long long **primos, unsi
     }
 
 
-    unsigned long long *exato = (unsigned long long *)realloc(v, (k ? k : 1) * sizeof(unsigned long long));
+    llu *exato = (llu *)realloc(v, (k ? k : 1) * sizeof(llu));
     if (exato != NULL) v = exato;
 
     *primos = v;
@@ -55,11 +56,11 @@ int crivo(char *numeros, unsigned long long n, unsigned long long **primos, unsi
     return 0;
 }
 
-int escrevePrimos(const unsigned long long *primos, unsigned long long qtd) {
+int escrevePrimos(const llu *primos, llu qtd) {
     FILE *arquivo = fopen("primos.txt", "w");
     if (arquivo == NULL) return 1;
 
-    for (unsigned long long i = 0; i < qtd; ++i) {
+    for (llu i = 0; i < qtd; ++i) {
         fprintf(arquivo, "%llu\n", primos[i]);
     }
     fprintf(arquivo, "\n");
@@ -75,7 +76,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    unsigned long long n = strtoull(argv[1], NULL, 10);
+    llu n = strtoull(argv[1], NULL, 10);
 
     if (n < 2) {
         fprintf(stderr, "ERRO: N deve ser pelo menos 2.\n");
@@ -93,8 +94,8 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    unsigned long long *primos = NULL;
-    unsigned long long qtd = 0;
+    llu *primos = NULL;
+    llu qtd = 0;
 
     // Medição: inicialização + crivo + identificação dos primos
     double t0 = timestampAtual();
