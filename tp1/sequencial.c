@@ -36,8 +36,9 @@ int escrevePrimos(char *numeros, unsigned long long n) {
     if (arquivo == NULL) return 1;
 
     for (unsigned long long i = 2; i < n; ++i) {
-        if (numeros[i] == 'v') fprintf(arquivo, "%llu | ", i);
+        if (numeros[i] == 'v') fprintf(arquivo, "%llu\n", i);
     }
+    
     fprintf(arquivo, "\n");
     fclose(arquivo);
     return 0;
@@ -46,21 +47,21 @@ int escrevePrimos(char *numeros, unsigned long long n) {
 
 
 int main(int argc, char **argv) {
-    if (argc < 2) {
-        fprintf(stderr, "Uso: ./prog n log");
+    if (argc < 1) {
+        fprintf(stderr, "Uso: ./prog n log(opcional)");
         return 1;
     }
 
     unsigned long long n = strtoull(argv[1], NULL, 10);
 
-    int log = (argc > 2 && strcmp(argv[2], "true") == 0);
+    int log = !(argc > 2 && strcmp(argv[2], "no") == 0);
 
     ++n;
 
     char *numeros = (char *)malloc(n * sizeof(char));
 
     if (numeros == NULL) {
-        fprintf(stderr, "Erro de alocação numeros\n");
+        fprintf(stderr, "Erro de alocação numeros\n"); fflush(stdout);
         return 1;
     }
 
@@ -71,7 +72,7 @@ int main(int argc, char **argv) {
     double t1 = timestampAtual();
 
     // Saída
-    printf("%llu %.6f\n", n - 1, t1 - t0);
+    printf("n = %llu, tempo = %.6f\n", n - 1, t1 - t0);
 
     if (log && escrevePrimos(numeros, n) != 0) {
         fprintf(stderr, "Erro na criação do arquivo!\n");

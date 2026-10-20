@@ -14,12 +14,12 @@ int main(int argc, char **argv) {
     double t0 = MPI_Wtime();
 
 
-    if(argc < 2) {
+    if(argc < 1) {
         fprintf(stderr, "ERRO: valor N não informado por parâmetro.\n");
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
 
-    int log = (argc > 2 && strcmp(argv[2], "true") == 0);
+    int log = !(argc > 2 && strcmp(argv[2], "no") == 0);
 
 
     llu n = strtoull(argv[1], NULL, 10);
@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     if(size < 2) {
-        fprintf(stderr, "ERRO: utilize pelo menos dois processos.");
+        fprintf(stderr, "ERRO: utilize pelo menos dois processos."); fflush(stdout);
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
 
@@ -161,7 +161,7 @@ int main(int argc, char **argv) {
     double local = MPI_Wtime() - t0, total;
     MPI_Reduce(&local, &total, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
-    if (rank == 0) printf("%llu %d %.6f\n", n-1, size, total);
+    if (rank == 0) printf("n = %llu, size = %d, tempo = %.6f\n", n-1, size, total);
 
     MPI_Finalize();
     return 0;

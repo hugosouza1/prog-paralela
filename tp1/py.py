@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt
 
 # ---------- 1. Perfil do gprof (copie os valores do seu flat profile) ----------
 PERFIL = {
-    "marcaMultiplos": 74.68,
-    "inicializa": 16.31,
+    "marcaMultiplos": 85,
+    "inicializa": 15,
     # "escreve_primos": 9.01,
 }
 
@@ -38,16 +38,16 @@ tab.to_csv("resultados.csv", index=False, float_format="%.4f")
 print(tab.to_string(index=False))
 
 # ---------- 3. Gráfico: perfil do gprof ----------
-# fig, ax = plt.subplots(figsize=(6, 3.5))
-# nomes, vals = list(PERFIL.keys()), list(PERFIL.values())
-# ax.barh(nomes[::-1], vals[::-1])
-# for i, v in enumerate(vals[::-1]):
-#     ax.text(v + 0.8, i, f"{v:.1f}%", va="center")
-# ax.set_xlabel("% do tempo total (gprof)")
-# ax.set_title("Perfil da versão sequencial")
-# ax.set_xlim(0, 100)
-# fig.tight_layout()
-# fig.savefig("grafico_perfil.png", dpi=150)
+fig, ax = plt.subplots(figsize=(6, 3.5))
+nomes, vals = list(PERFIL.keys()), list(PERFIL.values())
+ax.barh(nomes[::-1], vals[::-1])
+for i, v in enumerate(vals[::-1]):
+    ax.text(v + 0.8, i, f"{v:.1f}%", va="center")
+ax.set_xlabel("% do tempo total (gprof)")
+ax.set_title("Perfil da versão sequencial")
+ax.set_xlim(0, 100)
+fig.tight_layout()
+fig.savefig("grafico_perfil.png", dpi=150)
 
 # ---------- 4. Gráfico: tempo x N (crescimento) ----------
 fig, ax = plt.subplots(figsize=(7, 4.5))
