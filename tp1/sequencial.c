@@ -32,15 +32,16 @@ void crivo(char *numeros, unsigned long long n) {
 }
 
 int escrevePrimos(char *numeros, unsigned long long n) {
-    FILE *arquivo = fopen("primos.txt", "w");
-    if (arquivo == NULL) return 1;
+    // FILE *arquivo = fopen("primos.txt", "w");
+    // if (arquivo == NULL) return 1;
 
     for (unsigned long long i = 2; i < n; ++i) {
-        if (numeros[i] == 'v') fprintf(arquivo, "%llu\n", i);
+        if (numeros[i] == 'v') ;
+        // fprintf(arquivo, "%llu\n", i);
     }
     
-    fprintf(arquivo, "\n");
-    fclose(arquivo);
+    // fprintf(arquivo, "\n");
+    // fclose(arquivo);
     return 0;
 }
 
