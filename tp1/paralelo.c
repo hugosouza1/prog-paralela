@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
     }
 
     llu raizN = (llu) sqrt((double) n);
-    while (raizN * raizN >= n) --raizN;               
+    while (raizN * raizN >= n) --raizN;
     while ((raizN + 1) * (raizN + 1) < n) ++raizN;
 
     llu inicio = rank * (n / size);

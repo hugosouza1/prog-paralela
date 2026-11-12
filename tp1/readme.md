@@ -28,5 +28,3 @@ O tempo é de parede e não inclui a escrita em arquivo. No paralelo, é o maior
 ## Observações
 
 - O vetor usa 1 byte por número: N = 10⁹ ocupa ~1 GB. Se faltar memória, o processo é encerrado com `Killed`.
-- Use no máximo um processo por núcleo físico; acima disso é preciso `--oversubscribe`.
-- Rode em uma pasta do Linux (não em `/mnt/c`) para evitar lentidão e interferência do OneDrive nas medições.
