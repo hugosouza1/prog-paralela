@@ -97,20 +97,32 @@ int main(){
         matrizProxima = temp;
 
         // Debug
-        for(int i = 0; i < l; ++i){
-            for(int j = 0; j < c; ++j){
-                int val = matrizSimulacao[i][j];
-                // ▢▣▨▬▩▦▧▤▰▱▢
-                if(val){
-                    printf("▨");
-                } else {
-                    printf("▢");
-                }
-            }
-            printf("\n");
-        }
+        // for(int i = 0; i < l; ++i){
+        //     for(int j = 0; j < c; ++j){
+        //         int val = matrizSimulacao[i][j];
+        //         // ▢▣▨▬▩▦▧▤▰▱▢
+        //         if(val){
+        //             printf("▨ ");
+        //         } else {
+        //             printf("▢ ");
+        //         }
+        //     }
+        //     printf("\n");
+        // }
 
-        printf("\n");
+        //printf("\n");
         --gen;
+    }
+    for(int i = 0; i < l; ++i){
+        for(int j = 0; j < c; ++j){
+            int val = matrizSimulacao[i][j];
+            // ▢▣▨▬▩▦▧▤▰▱▢
+            if(val){
+                printf("▨ ");
+            } else {
+                printf("▢ ");
+            }
+        }
+        printf("\n");
     }
 }
