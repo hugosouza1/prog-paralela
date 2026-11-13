@@ -8,24 +8,15 @@ typedef struct {
 } Coordenadas;
 
 
-int posicaoValida(int x, int y, int l, int c){
+int posicaoValida(long long int x, long long int y, long long int l, long long int c){
     if(x >= 0 && x < l && y >= 0 && y < c)
         return 1;
     return 0;
 }
 
 int main(){
-    long long int gen;
-    scanf("%lld", &gen);
-    
-    long long int l; 
-    scanf("%lld", &l);
-
-    long long int c;
-    scanf("%lld", &c);
-
-    long long int n;
-    scanf("%lld", &n);
+    long long int gen, l, c, n;
+    scanf("%lld %lld %lld %lld", &gen, &l, &c, &n);
         
     Coordenadas *vivosIniciais = malloc (sizeof(Coordenadas) * n);
 
@@ -125,4 +116,8 @@ int main(){
         }
         printf("\n");
     }
+
+    free(vivosIniciais);
+    free(matrizSimulacao);
+    free(matrizProxima);
 }
