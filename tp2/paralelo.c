@@ -33,10 +33,10 @@ char **atual = NULL;
 void freeMatriz(void *m, LLU linhas) {
 	void **matriz = (void**)m;
 	for(LLU i = 0; i < linhas; i++) {
-	free(matriz[i]);
-}
+		free(matriz[i]);
+	}
 
-free(matriz);
+	free(matriz);
 }
 
 int posicaoValida(long long int x, long long int y, long long int L, long long int C) {
