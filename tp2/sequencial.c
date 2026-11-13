@@ -52,7 +52,7 @@ int main(){
         matrizProxima[i] = calloc(c, sizeof(char));
     }
 
-    while(gen >= 0){
+    while(gen > 0){
         for(int i = 0; i < l; ++i){
             for(int j = 0; j < c; ++j){
                 int vizinhosVivos = 0;
@@ -110,7 +110,7 @@ int main(){
         //     printf("\n");
         // }
 
-        //printf("\n");
+        // printf("\n");
         --gen;
     }
     for(int i = 0; i < l; ++i){
