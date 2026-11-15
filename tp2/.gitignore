@@ -1,0 +1,21 @@
+# Executáveis compilados
+gerador
+seq
+seq_vet
+par
+par_vet
+par_vet_opt
+*.out
+*.exe
+*.o
+
+# Arquivos de teste e saídas geradas
+entrada*.txt
+saida*.txt
+input*.txt
+output*.txt
+
+# Arquivos de profiling (gprof)
+gmon.out
+
+.venv
