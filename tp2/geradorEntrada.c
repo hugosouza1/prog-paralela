@@ -1,59 +1,45 @@
-
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 
-int main() {
-    srand(time(NULL));
-
-    // Parametros da simulacao
-    int geracoes = 10000;
-    int linhas = 30;
-    int colunas = 30;
-    int n = 200;
-
-    int total = linhas * colunas;
-
-    if (n > total || n < 0) {
-        fprintf(stderr, "Quantidade de celulas invalida.\n");
+// Uso: ./gerador <geracoes> <linhas> <colunas> <densidade 0..1> <semente>
+int main(int argc, char *argv[]) {
+    if (argc != 6) {
+        fprintf(stderr, "Uso: %s geracoes linhas colunas densidade semente\n", argv[0]);
         return 1;
     }
 
-    // Cria vetor com todas as posicoes
-    int *posicoes = malloc(total * sizeof(int));
+    long long geracoes = atoll(argv[1]);
+    long long linhas   = atoll(argv[2]);
+    long long colunas  = atoll(argv[3]);
+    double densidade   = atof(argv[4]);
+    unsigned semente   = (unsigned) atoi(argv[5]);
 
-    if (posicoes == NULL) {
+    long long total = linhas * colunas;
+    long long n = (long long)(total * densidade);
+
+    if (linhas <= 0 || colunas <= 0 || densidade < 0 || densidade > 1) {
+        fprintf(stderr, "Parametros invalidos.\n");
         return 1;
     }
 
-    for (int i = 0; i < total; ++i) {
-        posicoes[i] = i;
+    srand(semente);
+
+    long long *posicoes = malloc(total * sizeof(long long));
+    if (posicoes == NULL) return 1;
+
+    for (long long i = 0; i < total; ++i) posicoes[i] = i;
+
+    // Fisher-Yates parcial: só n passos, pois só precisamos das n primeiras posições
+    for (long long i = 0; i < n; ++i) {
+        long long restante = total - i;
+        long long j = i + rand() % restante;
+        long long tmp = posicoes[i]; posicoes[i] = posicoes[j]; posicoes[j] = tmp;
     }
 
-    // Fisher-Yates: embaralhamento
-    for (int i = total - 1; i > 0; --i) {
-        int j = rand() % (i + 1);
-
-        int temp = posicoes[i];
-        posicoes[i] = posicoes[j];
-        posicoes[j] = temp;
-    }
-
-    // Imprime entrada
-    printf("%d\n", geracoes);
-    printf("%d\n", linhas);
-    printf("%d\n", colunas);
-    printf("%d\n", n);
-
-    // Converte posicao linear em coordenadas
-    for (int i = 0; i < n; ++i) {
-        int x = posicoes[i] / colunas;
-        int y = posicoes[i] % colunas;
-
-        printf("%d %d\n", x, y);
-    }
+    printf("%lld\n%lld\n%lld\n%lld\n", geracoes, linhas, colunas, n);
+    for (long long i = 0; i < n; ++i)
+        printf("%lld %lld\n", posicoes[i] / colunas, posicoes[i] % colunas);
 
     free(posicoes);
-
     return 0;
 }

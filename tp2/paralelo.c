@@ -1,265 +1,274 @@
+#define _XOPEN_SOURCE 600
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <time.h>
+#include <string.h>
+
 #define LLU long long int
 
 typedef struct {
-	LLU x;
-	LLU y;
+    LLU x;
+    LLU y;
 } Coordenadas;
 
 typedef struct {
-	LLU inicio;
-	LLU fim;
-	int id;
+    LLU inicio;
+    LLU fim;
 } ThreadData;
 
 LLU N_GEN, L, C, N;
-
 int N_THREADS = 1;
 
 pthread_barrier_t barreiraDeCalculo;
-pthread_barrier_t barreiraDeTroca;
 
 Coordenadas vizinhos[8] = {
-	{1,  -1}, {1,  0}, {1,  1},
-	{0,  -1},          {0,  1},
-	{-1, -1}, {-1, 0}, {-1, 1}
+    {1,  -1}, {1,  0}, {1,  1},
+    {0,  -1},          {0,  1},
+    {-1, -1}, {-1, 0}, {-1, 1}
 };
 
-char **anterior = NULL;
-char **atual = NULL;
+char *anterior = NULL;
+char *atual = NULL;
 
-void freeMatriz(void *m, LLU linhas) {
-	void **matriz = (void**)m;
-	for(LLU i = 0; i < linhas; i++) {
-		free(matriz[i]);
-	}
-
-	free(matriz);
+static inline int posicaoValida(LLU x, LLU y, LLU l, LLU c){
+    return x >= 0 && x < l && y >= 0 && y < c;
 }
 
-int posicaoValida(long long int x, long long int y, long long int L, long long int C) {
-	return x >= 0 && x < L && y >= 0 && y < C;
+void esperaBarreira(pthread_barrier_t *barreira){
+    int erro = pthread_barrier_wait(barreira);
+    if(erro != 0 && erro != PTHREAD_BARRIER_SERIAL_THREAD){
+        fprintf(stderr, "Erro na barreira: %d\n", erro);
+        exit(EXIT_FAILURE);
+    }
 }
 
-void esperaBarreira(pthread_barrier_t *barreira) {
-	int erro = pthread_barrier_wait(barreira);
+void *processaBloco(void *arg){
+    ThreadData *dados = (ThreadData*)arg;
 
-	if(erro != 0 && erro != PTHREAD_BARRIER_SERIAL_THREAD) {
-		fprintf(stderr, "Erro na barreira: %d\n", erro);
-		exit(EXIT_FAILURE);
-	}
+    char *ant_local = anterior;
+    char *atu_local = atual;
+
+    LLU ini = dados->inicio;
+    LLU fim = dados->fim;
+
+    LLU linha = ini / C;
+    LLU coluna = ini % C;
+
+    for(LLU geracao = 0; geracao < N_GEN; ++geracao){
+        for(LLU k = ini; k < fim; ++k){
+            int vizinhosVivos = 0;
+
+            for(int v = 0; v < 8; ++v){
+                LLU x = linha + vizinhos[v].x;
+                LLU y = coluna + vizinhos[v].y;
+
+                if(posicaoValida(x, y, L, C)){
+                    vizinhosVivos += ant_local[x * C + y];
+                }
+            }
+
+            char celula = ant_local[k];
+
+            if(celula){
+                atu_local[k] = (vizinhosVivos == 2 || vizinhosVivos == 3);
+            } else {
+                atu_local[k] = (vizinhosVivos == 3);
+            }
+
+            coluna++;
+
+            if(coluna == C){
+                coluna = 0;
+                linha++;
+            }
+        }
+
+        esperaBarreira(&barreiraDeCalculo);
+
+        char *aux = ant_local;
+        ant_local = atu_local;
+        atu_local = aux;
+
+        linha = ini / C;
+        coluna = ini % C;
+    }
+
+    return NULL;
 }
 
-void *processaBloco(void *arg) {
-	ThreadData *dados = (ThreadData*)arg;
-	for(LLU geracao = 0; geracao < N_GEN; geracao++) {
-		for(LLU i = dados->inicio; i < dados->fim; i++) {
-			for(LLU j = 0; j < C; j++) {
-				int vizinhosVivos = 0;
 
-				for(int v = 0; v < 8; v++) {
-					LLU x = i + vizinhos[v].x;
-					LLU y = j + vizinhos[v].y;
+// #define CACHE_LINE 64
 
-					if(posicaoValida(x, y, L, C)) {
-						if(anterior[x][y]) {
-							vizinhosVivos++;
-						}
-					}
-				}
+// static char *alocaAlinhado(size_t n){
+//     void *p = NULL;
+//     if(posix_memalign(&p, CACHE_LINE, n) != 0) return NULL;
+//     memset(p, 0, n);   // equivalente ao calloc (inclua <string.h>)
+//     return (char*)p;
+// }
 
-				int celula = anterior[i][j];
-				if(celula) {
-					celula = (vizinhosVivos < 2 || vizinhosVivos > 3) ? 0 : 1;
-				} else {
-					celula = (vizinhosVivos == 3) ? 1 : 0;
-				}
-				atual[i][j] = celula;
-			}
-		}
-		esperaBarreira(&barreiraDeCalculo);
 
-		if(dados->id == 0) {
-			char **aux = anterior;
-			anterior = atual;
-			atual = aux;
+int main(int argc, char *argv[]){
 
-			// for(LLU i = 0; i < L; i++) {
-			//   for(LLU j = 0; j < C; j++) {
-			//     if(anterior[i][j]) {
-			//       printf("▨ ");
-			//     } else {
-			//       printf("▢ ");
-			//     }
-			//   }
-			//   printf("\n");
-			// }
-			// printf("\n");
-		}
-		esperaBarreira(&barreiraDeTroca);
-	}
+    struct timespec inicio_total, fim_total;
+    struct timespec inicio_simulacao, fim_simulacao;
 
-	return NULL;
-}
+    clock_gettime(CLOCK_MONOTONIC, &inicio_total);
 
-int main(int argc, char *argv[]) {
-	if(argc < 2) {
-		fprintf(stderr, "Quantidade de threads não foi informado.\n");
-		return EXIT_FAILURE;
-	}
+    if(argc < 2)
+        { fprintf(stderr, "Quantidade de threads não foi informada.\n"); return EXIT_FAILURE;}
 
-	N_THREADS = atoi(argv[1]);
-	if(N_THREADS <= 0) {
-		fprintf(stderr, "Quantidade de threads inválida.\n");
-		return EXIT_FAILURE;
-	}
+    N_THREADS = atoi(argv[1]);
+    if(N_THREADS <= 0)
+        { fprintf(stderr, "Quantidade de threads inválida.\n"); return EXIT_FAILURE;}
 
-	if(
-		scanf("%lld", &N_GEN) != 1 ||
-		scanf("%lld", &L) != 1 ||
-		scanf("%lld", &C) != 1 ||
-		scanf("%lld", &N) != 1
-	) {
-		fprintf(stderr, "Erro na leitura da entrada.\n");
-		return EXIT_FAILURE;
-	}
+    if(scanf("%lld %lld %lld %lld", &N_GEN, &L, &C, &N) != 4)
+        {fprintf(stderr, "Erro na leitura da entrada.\n"); return EXIT_FAILURE;}
 
-	if(N_GEN < 0 || L <= 0 || C <= 0 || N < 0) {
-		fprintf(stderr, "Entrada inválida.\n");
-		return EXIT_FAILURE;
-	}
+    if(N_GEN < 0 || L <= 0 || C <= 0 || N < 0)
+        {fprintf(stderr, "Entrada inválida.\n"); return EXIT_FAILURE;}
 
-	Coordenadas *vivos = malloc(sizeof(Coordenadas) * N);
-	if(N > 0 && vivos == NULL) {
-		perror("Erro ao alocar coordenadas das células vivas inicialmente.");
-		return EXIT_FAILURE;
-	}
+    Coordenadas *vivos = malloc(sizeof(Coordenadas) * N);
+    if(N > 0 && vivos == NULL)
+        {perror("Erro ao alocar coordenadas iniciais"); return EXIT_FAILURE;}
 
-	for(LLU i = 0; i < N; i++) {
-		LLU x, y;
+    for(LLU i = 0; i < N; ++i){
+        LLU x, y;
+        if(scanf("%lld %lld", &x, &y) != 2){
+            fprintf(stderr, "Erro ao ler coordenadas na linha %lld.\n", i + 1);
+            free(vivos);
+            return EXIT_FAILURE;
+        }
+        if(x < 0 || x >= L || y < 0 || y >= C){
+            fprintf(stderr, "Coordenada inválida na linha %lld.\n", i + 1);
+            free(vivos);
+            return EXIT_FAILURE;
+        }
+        vivos[i].x = x;
+        vivos[i].y = y;
+    }
 
-		if(scanf("%lld %lld", &x, &y) != 2) {
-			fprintf(stderr, "Erro ao ler coordenadas na linha %lld.\n", i+1);
-			free(vivos);
-			return EXIT_FAILURE;
-		}
+    anterior = (char*)calloc(L * C, sizeof(char));
+    atual    = (char*)calloc(L * C, sizeof(char));
 
-		if(x < 0 || x >= L || y < 0 || y >= C) {
-			fprintf(stderr, "Coordenada inválida na linha %lld.\n", i+1);
-			free(vivos);
-			return EXIT_FAILURE;
-		}
+    // anterior = alocaAlinhado(L * C);
+    // atual    = alocaAlinhado(L * C);
 
-		vivos[i].x = x;
-		vivos[i].y = y;
-	}
+    if(anterior == NULL || atual == NULL){
+        perror("Erro ao alocar matrizes");
+        free(vivos); free(anterior); free(atual);
+        return EXIT_FAILURE;
+    }
 
-	anterior = (char**)malloc(L * sizeof(char*));
-	atual = (char**)malloc(L * sizeof(char*));
+    for(LLU i = 0; i < N; ++i){
+        anterior[vivos[i].x * C + vivos[i].y] = 1;
+    }
+    free(vivos);
 
-	if(anterior == NULL || atual == NULL) {
-		perror("Erro ao alocar matrizes");
-		free(vivos);
-		freeMatriz(anterior, L);
-		freeMatriz(atual, L);
-	}
+    ThreadData *pacotes = (ThreadData*)malloc(N_THREADS * sizeof(ThreadData));
+    pthread_t *threads  = (pthread_t*)malloc(N_THREADS * sizeof(pthread_t));
 
-	for(LLU i = 0; i < L; i++) {
-		anterior[i] = calloc(C, sizeof(char));
-		atual[i] = calloc(C, sizeof(char));
-	}
+    if(pacotes == NULL || threads == NULL){
+        perror("Erro ao alocar threads ou pacotes");
+        free(pacotes); free(threads); free(anterior); free(atual);
+        return EXIT_FAILURE;
+    }
 
-	for(LLU i = 0; i < N; i++) {
-		anterior[vivos[i].x][vivos[i].y] = 1;
-	}
 
-	free(vivos);
+    
+    LLU total = L * C;
+    LLU blocos = total / N_THREADS;
+    LLU resto = total % N_THREADS;
 
-	ThreadData *pacotes = (ThreadData*)malloc(N_THREADS * sizeof(ThreadData));
-	pthread_t *threads = (pthread_t*)malloc(N_THREADS * sizeof(pthread_t));
+    for(int i = 0; i < N_THREADS; ++i){
+        pacotes[i].inicio = i * blocos + (i < resto ? i : resto);
+        pacotes[i].fim = pacotes[i].inicio + blocos + (i < resto ? 1 : 0);
+    }
 
-	if(pacotes == NULL || threads == NULL) {
-		perror("Erro ao alocar threads ou pacotes.\n");
 
-		free(pacotes);
-		free(threads);
-		freeMatriz(anterior, L);
-		freeMatriz(atual, L);
+    // LLU total   = L * C;
+    // LLU unidades = (total + CACHE_LINE - 1) / CACHE_LINE; 
+    // LLU porThread = unidades / N_THREADS;
+    // LLU resto     = unidades % N_THREADS;
 
-		return EXIT_FAILURE;
-	}
+    // for(int i = 0; i < N_THREADS; ++i){
+    //     LLU uIni = i * porThread + (i < resto ? i : resto);
+    //     LLU uFim = uIni + porThread + (i < resto ? 1 : 0);
 
-	LLU blocos = L / N_THREADS;
-	LLU resto = L % N_THREADS;
+    //     LLU ini = uIni * CACHE_LINE;
+    //     LLU fim = uFim * CACHE_LINE;
 
-	for(int i = 0; i < N_THREADS; i++) {
-		pacotes[i].inicio = i * blocos + (i < resto ? i : resto);
-		pacotes[i].fim = pacotes[i].inicio + blocos + (i < resto ? 1 : 0);
-		pacotes[i].id = i;
-	}
+    //     pacotes[i].inicio = ini < total ? ini : total;
+    //     pacotes[i].fim    = fim < total ? fim : total;
+    // }
 
-	int erro;
-	erro = pthread_barrier_init(&barreiraDeCalculo, NULL, N_THREADS);
 
-	if(erro != 0) {
-		fprintf(stderr, "Erro ao inicializar barreira: %d\n", erro);
-		free(pacotes);
-		free(threads);
-		freeMatriz(anterior, L);
-		freeMatriz(atual, L);
 
-		return EXIT_FAILURE;
-	}
+    int erro = pthread_barrier_init(&barreiraDeCalculo, NULL, N_THREADS);
+    if(erro != 0){
+        fprintf(stderr, "Erro ao inicializar barreira: %d\n", erro);
+        free(pacotes); free(threads); free(anterior); free(atual);
+        return EXIT_FAILURE;
+    }
 
-	erro = pthread_barrier_init(&barreiraDeTroca, NULL, N_THREADS);
 
-	if(erro != 0) {
-		fprintf(stderr, "Erro ao inicializar barreira: %d\n", erro);
-		free(pacotes);
-		free(threads);
-		freeMatriz(anterior, L);
-		freeMatriz(atual, L);
+    clock_gettime(CLOCK_MONOTONIC, &inicio_simulacao);
 
-		return EXIT_FAILURE;
-	}
+    for(int i = 0; i < N_THREADS; ++i){
+        erro = pthread_create(&threads[i], NULL, processaBloco, &pacotes[i]);
+        if(erro != 0){
+            fprintf(stderr, "Erro ao criar thread %d: %d\n", i, erro); exit(EXIT_FAILURE);
+        }
+    }
 
-	for(int i = 0; i < N_THREADS; i++) {
-		erro = pthread_create(&threads[i], NULL, processaBloco, &pacotes[i]);
+    for(int i = 0; i < N_THREADS; ++i){
+        erro = pthread_join(threads[i], NULL);
+        if(erro != 0){
+            fprintf(stderr, "Erro ao aguardar thread %d: %d\n", i, erro);
+        }
+    }
 
-		if(erro != 0) {
-			fprintf(stderr, "Erro ao criar thread %d: %d\n", i, erro);
-			exit(EXIT_FAILURE);
-		}
-	}
+    clock_gettime(CLOCK_MONOTONIC, &fim_simulacao);
 
-	for(int i = 0; i < N_THREADS; i++) {
-		erro = pthread_join(threads[i], NULL);
+    double tempo_simulacao = (fim_simulacao.tv_sec - inicio_simulacao.tv_sec) + (fim_simulacao.tv_nsec - inicio_simulacao.tv_nsec) / 1e9;
 
-		if(erro != 0) {
-			fprintf(stderr, "Erro ao aguardar thread %d: %d\n", i, erro);
-		}
-	}
 
-	pthread_barrier_destroy(&barreiraDeCalculo);
-	pthread_barrier_destroy(&barreiraDeTroca);
+    pthread_barrier_destroy(&barreiraDeCalculo);
 
-	for(LLU i = 0; i < L; i++) {
-		for(LLU j = 0; j < C; j++) {
-			if(anterior[i][j]) {
-				printf("▨ ");
-			} else {
-				printf("▢ ");
-			}
-		}
-		printf("\n");
-	}
+    char *resultadoFinal = (N_GEN % 2 == 0) ? anterior : atual;
 
-	free(pacotes);
-	free(threads);
-	freeMatriz(anterior, L);
-	freeMatriz(atual, L);
+    LLU vivosFinais = 0;
+    for(LLU k = 0; k < L * C; k++){
+        if(resultadoFinal[k]) vivosFinais++;
+    }
 
-	return EXIT_SUCCESS;
+    printf("%lld\n%lld\n%lld\n%lld\n", N_GEN, L, C, vivosFinais);
+    for(LLU i = 0; i < L; ++i){
+        for(LLU j = 0; j < C; ++j){
+            if(resultadoFinal[i * C + j]){
+                printf("%lld %lld\n", i, j);
+            }
+        }
+    }
+
+    /* 
+    // Saída visual 
+    for(LLU i = 0; i < L; i++){
+        for(LLU j = 0; j < C; j++){
+            printf(resultadoFinal[i * C + j] ? "▨ " : "▢ ");
+        }
+        printf("\n");
+    }
+    */
+
+    free(pacotes); free(threads); free(anterior); free(atual);
+
+    clock_gettime(CLOCK_MONOTONIC, &fim_total);
+
+    double tempo = (fim_total.tv_sec - inicio_total.tv_sec) + (fim_total.tv_nsec - inicio_total.tv_nsec) / 1e9;
+
+    fprintf(stderr, "Tempo de execução: %.6f segundos\n", tempo);
+    fprintf(stderr, "Tempo de simulacao: %.6f segundos\n", tempo_simulacao);
+
+    return EXIT_SUCCESS;
 }
