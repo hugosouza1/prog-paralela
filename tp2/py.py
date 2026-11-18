@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lê o resultados.csv do rodar_experimentos.sh e gera os 4 gráficos.
+"""Lê o resultados.csv do rodar_experimentos.sh e gera os gráficos.
 
 Uso:
     python3 gerar_graficos.py [resultados.csv] [pasta_saida]
@@ -8,16 +8,19 @@ Requer: pandas e matplotlib (pip install pandas matplotlib)
 
 Gráficos gerados (um PNG e um PDF cada):
     1. Tempo de simulação por nº de threads
-    2. Speedup por nº de threads (com a linha ideal S(N) = N)
+    2. Speedup (simulação) por nº de threads, com a linha ideal S(N) = N
     3. Eficiência paralela por nº de threads
     4. Tempo total por nº de threads
+    5. Speedup total (inclui leitura/alocação seriais; mostra a Lei de Amdahl)
 
 Metodologia:
     - Baseline = versão SEQUENCIAL (não o paralelo com 1 thread).
-    - O speedup é calculado por instância (grade, seed): tempo médio do
-      sequencial naquela instância / tempo de cada execução paralela.
-    - Pontos = média; barras de erro = desvio padrão entre seeds e repetições.
-    - Execuções com correto = 0 (saída diferente do sequencial) são descartadas.
+    - Speedup = média do sequencial na instância / tempo de cada execução paralela.
+    - Pontos = média; barras de erro = desvio padrão entre repetições.
+    - correto: 1 = validado, NA = não validado (repetições 2..N, rodadas com "no"),
+      0 = saída diferente do sequencial -> o script aborta.
+    - A repetição 1 escreve a saída, então seu tempo_total é descartado.
+      tempo_sim vale em todas as repetições.
 """
 
 import os
@@ -29,6 +32,8 @@ matplotlib.use("Agg")  # funciona sem display (WSL, servidor)
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from matplotlib.ticker import FuncFormatter, LogLocator, NullFormatter
+
 # ---------- Configuração ----------
 NUCLEOS_FISICOS = 4   # acima disso, as threads usam SMT (hyper-threading)
 DPI = 200
@@ -38,12 +43,14 @@ DPI = 200
 def carregar(caminho):
     df = pd.read_csv(caminho)
 
-    ruins = df[df["correto"] != 1]
+    # Só 0 é divergência real; NA = repetição não validada (esperado)
+    ruins = df[df["correto"] == 0]
     if len(ruins) > 0:
-        print(f"AVISO: {len(ruins)} execução(ões) com saída diferente do "
-              f"sequencial foram descartadas:", file=sys.stderr)
-        print(ruins.to_string(index=False), file=sys.stderr)
-        df = df[df["correto"] == 1]
+        sys.exit("ERRO: saída diferente do sequencial:\n"
+                 + ruins.to_string(index=False))
+
+    # A repetição 1 inclui a escrita da saída: tempo_total não é comparável
+    df.loc[df["rep"] == 1, "tempo_total"] = float("nan")
 
     return df
 
@@ -55,7 +62,7 @@ def calcular(df):
     if seq.empty or par.empty:
         sys.exit("O CSV precisa ter execuções 'seq' e 'par'.")
 
-    # Baseline por instância (grade, seed): média das repetições do sequencial
+    # Baseline por instância (grade, seed); mean ignora NaN do tempo_total
     base = (seq.groupby(["grade", "seed"])
                .agg(seq_sim=("tempo_sim", "mean"),
                     seq_total=("tempo_total", "mean"))
@@ -64,28 +71,39 @@ def calcular(df):
 
     par["speedup"] = par["seq_sim"] / par["tempo_sim"]
     par["eficiencia"] = par["speedup"] / par["threads"]
+    par["speedup_total"] = par["seq_total"] / par["tempo_total"]
 
     resumo = (par.groupby(["grade", "threads"])
                  .agg(sim_m=("tempo_sim", "mean"), sim_s=("tempo_sim", "std"),
                       tot_m=("tempo_total", "mean"), tot_s=("tempo_total", "std"),
                       sp_m=("speedup", "mean"), sp_s=("speedup", "std"),
                       ef_m=("eficiencia", "mean"), ef_s=("eficiencia", "std"),
-                      n=("tempo_sim", "size"))
-                 .reset_index()
-                 .fillna(0.0))
+                      spt_m=("speedup_total", "mean"),
+                      spt_s=("speedup_total", "std"),
+                      n=("tempo_sim", "size"),
+                      n_tot=("tempo_total", "count"))
+                 .reset_index())
+
+    if (resumo["n"] < 2).any():
+        print("AVISO: há configurações com menos de 2 repetições; "
+              "o desvio padrão não é confiável.", file=sys.stderr)
+
+    # std = NaN quando n < 2: troca por 0 só para a barra de erro não falhar
+    cols_std = [c for c in resumo.columns if c.endswith("_s")]
+    resumo[cols_std] = resumo[cols_std].fillna(0.0)
 
     ref_seq = (seq.groupby("grade")
                   .agg(sim_m=("tempo_sim", "mean"), sim_s=("tempo_sim", "std"),
                        tot_m=("tempo_total", "mean"), tot_s=("tempo_total", "std"),
-                       n=("tempo_sim", "size"))
-                  .fillna(0.0))
+                       n=("tempo_sim", "size"),
+                       n_tot=("tempo_total", "count")))
     return resumo, ref_seq
 
 
 def grafico(resumo, col, titulo, ylabel, arquivo, pasta,
             ref=None, ideal=False, hline1=False, logy=False):
-    """col: prefixo da coluna (sim, tot, sp, ef).
-    ref: dict grade -> valor do sequencial, desenhado como linha tracejada."""
+    """col: prefixo da coluna (sim, tot, sp, ef, spt).
+    ref: dict grade -> valor do sequencial, desenhado como linha pontilhada."""
     grades = sorted(resumo["grade"].unique())
     cores = {g: f"C{i}" for i, g in enumerate(grades)}
     threads = sorted(resumo["threads"].unique())
@@ -116,6 +134,12 @@ def grafico(resumo, col, titulo, ylabel, arquivo, pasta,
 
     if logy:
         ax.set_yscale("log")
+        ax.yaxis.set_major_locator(
+            LogLocator(base=10, subs=(1, 1.5, 2, 3, 4, 5, 7), numticks=30))
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}"))
+        ax.yaxis.set_minor_formatter(NullFormatter())
+        
+        
     ax.set_xticks(threads)
     ax.set_xlabel("Quantidade de threads")
     ax.set_ylabel(ylabel)
@@ -144,24 +168,29 @@ def main():
     ref_seq.to_csv(os.path.join(pasta, "resumo_sequencial.csv"))
 
     grafico(resumo, "sim",
-            "Gráfico 1 — Tempo de simulação por quantidade de threads",
+            "Tempo de simulação por quantidade de threads",
             "Tempo de simulação (s)", "grafico1_tempo_simulacao", pasta,
             ref=ref_seq["sim_m"].to_dict(), logy=True)
 
     grafico(resumo, "sp",
-            "Gráfico 2 — Speedup por quantidade de threads",
+            "Speedup por quantidade de threads",
             "Speedup  S(N) = T_seq / T_par(N)", "grafico2_speedup", pasta,
             ideal=True)
 
     grafico(resumo, "ef",
-            "Gráfico 3 — Eficiência paralela por quantidade de threads",
+            "Eficiência paralela por quantidade de threads",
             "Eficiência  E(N) = S(N) / N", "grafico3_eficiencia", pasta,
             hline1=True)
 
     grafico(resumo, "tot",
-            "Gráfico 4 — Tempo total por quantidade de threads",
+            "Tempo total por quantidade de threads",
             "Tempo total (s)", "grafico4_tempo_total", pasta,
             ref=ref_seq["tot_m"].to_dict(), logy=True)
+
+    grafico(resumo, "spt",
+            "Speedup total (inclui leitura e alocação seriais)",
+            "Speedup total  T_seq / T_par(N)", "grafico5_speedup_total", pasta,
+            ideal=True)
 
     print(f"Gráficos e tabelas-resumo salvos em '{pasta}/'")
 

@@ -1,3 +1,10 @@
-./gerador 200 256  256  0.30 42 > entrada_pequena.txt
-./gerador 200 2048 2048 0.30 42 > entrada_media.txt
-./gerador 200 4098 4098 0.10 42 > entrada_grande.txt
+gcc -O2 -pg -fno-inline -fno-inline-functions-called-once sequencial.c -o sequencial.exe && \
+
+./sequencial.exe instancias/g100_gen10000_d0.30_s1.txt no && \
+gprof -b sequencial.exe gmon.out > analise100.txt && \
+
+./sequencial.exe instancias/g1000_gen200_d0.30_s1.txt no && \
+gprof -b sequencial.exe gmon.out > analise1000.txt && \
+
+./sequencial.exe instancias/g5000_gen20_d0.30_s1.txt no && \
+gprof -b sequencial.exe gmon.out > analise5000.txt

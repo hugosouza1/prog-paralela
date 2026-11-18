@@ -2,11 +2,14 @@
 # Roda os experimentos do Jogo da Vida (sequencial e paralelo) e grava um CSV.
 #
 # Compile antes, sem -pg e com a mesma otimização nas duas versões:
-#   gcc -O2 -o sequencial sequencial.c
-#   gcc -O2 -pthread -o paralelo paralelo.c
-#   gcc -O2 -o gerador gerador.c
+gcc -O2 -o sequencial sequencial.c
+gcc -O2 -pthread -o paralelo paralelo.c
+gcc -O2 -o gerador geradorEntrada.c
 #
 # Uso: chmod +x rodar_experimentos.sh && ./rodar_experimentos.sh
+
+rm resultados.csv
+# rm -rf instancias 
 
 set -euo pipefail
 export LC_ALL=C   # garante ponto decimal na leitura dos tempos
@@ -18,13 +21,13 @@ GER=./gerador
 SAIDA=resultados.csv
 DIR_INST=instancias
 
-TAMANHOS=(100 1000 10000)       # grade TAMANHO x TAMANHO
+TAMANHOS=(100 1000 5000)
 DENSIDADES=(0.30 0.30 0.30)
-GERACOES=(100 100 100)
+GERACOES=(10000 200 20)
 
-THREADS=(1 2 3 4)
-SEEDS=(1 2 3)                  # instâncias diferentes
-REPS=5                         # repetições de cada (instância, configuração)
+THREADS=(1 2 3 4 5 6 7 8 12 16)
+SEEDS=(1)
+REPS=10
 # -----------------------------------
 
 mkdir -p "$DIR_INST"
@@ -41,25 +44,30 @@ declare -A REF   # hash da saída do sequencial, por (grade, seed)
 roda() {
     local versao=$1 threads=$2 bin=$3
     local out="$TMP/out.txt" err="$TMP/err.txt"
+    local extra=(no) ok="NA" hash key
+
+    # 1ª repetição: escreve a saída para validar
+    if [ "$rep" -eq 1 ]; then extra=(); fi
 
     if [ "$versao" = "seq" ]; then
-        "$bin" < "$inst" > "$out" 2> "$err"
+        "$bin" "$inst" "${extra[@]}" > "$out" 2> "$err"
     else
-        "$bin" "$threads" < "$inst" > "$out" 2> "$err"
+        "$bin" "$inst" "$threads" "${extra[@]}" > "$out" 2> "$err"
     fi
 
-    local sim tot hash key ok
+    local sim tot
     sim=$(awk '/simulacao/ {print $4}' "$err")
     tot=$(awk '/execu/ {print $4}' "$err")
-    hash=$(md5sum < "$out" | cut -d' ' -f1)
 
-    # O sequencial roda primeiro e define a saída de referência
-    key="${L}_${seed}"
-    if [ -z "${REF[$key]:-}" ]; then REF[$key]=$hash; fi
-    if [ "$hash" = "${REF[$key]}" ]; then ok=1; else ok=0; fi
+    if [ "$rep" -eq 1 ]; then
+        hash=$(md5sum < "$out" | cut -d' ' -f1)
+        key="${L}_${seed}"
+        if [ -z "${REF[$key]:-}" ]; then REF[$key]=$hash; fi
+        if [ "$hash" = "${REF[$key]}" ]; then ok=1; else ok=0; fi
+    fi
 
     echo "$versao,$threads,$L,$G,$D,$seed,$rep,$sim,$tot,$ok" >> "$SAIDA"
-    echo "[$(date +%H:%M:%S)] $versao t=$threads grade=$L seed=$seed rep=$rep sim=${sim}s ok=$ok" >&2
+    echo "[$(date +%H:%M:%S)] $versao t=$threads grade=$L rep=$rep sim=${sim}s ok=$ok" >&2
 }
 
 # Repetição no laço externo: as configurações ficam intercaladas no tempo,

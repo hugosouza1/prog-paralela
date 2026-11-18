@@ -2,6 +2,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define LLU long long int
 
@@ -92,46 +93,79 @@ void imprimeResultado(char *resultado, LLU gen, LLU l, LLU c){
 }
 
 
-int main(){
 
-    struct timespec inicio_total, fim_total;
-    clock_gettime(CLOCK_MONOTONIC, &inicio_total);
+void leitura(LLU *gen, LLU *l, LLU *c, LLU *n, Coordenadas **vivosIniciais, char *path){
+    FILE *arquivo = fopen(path, "r");
 
-    // Leitura
-    LLU gen, l, c, n;
-    if(scanf("%lld %lld %lld %lld", &gen, &l, &c, &n) != 4){
-        return EXIT_FAILURE;
+    if(arquivo == NULL){
+        fprintf(stderr, "Erro ao abrir arquivo.");
+        exit(EXIT_FAILURE);
     }
 
-    if(gen < 0 || l <= 0 || c <= 0 || n < 0){
+    if(fscanf(arquivo, "%lld %lld %lld %lld", gen, l, c, n) != 4){
+        fclose(arquivo);
+        exit(EXIT_FAILURE);
+    }
+
+    if(*gen < 0 || *l <= 0 || *c <= 0 || *n < 0){
+        fprintf(stderr, "Entrada inválida.");
+        fclose(arquivo);
+        exit(EXIT_FAILURE);
+    }
+
+    *vivosIniciais = malloc(sizeof(Coordenadas) * (*n));
+
+    if(*n > 0 && *vivosIniciais == NULL){
+        fprintf(stderr, "Erro ao alocar coordenadas.");
+        fclose(arquivo);
+        exit(EXIT_FAILURE);
+    }
+
+    for(LLU i = 0; i < *n; ++i){
+        LLU a, b;
+
+        if(fscanf(arquivo, "%lld %lld", &a, &b) != 2){
+            free(*vivosIniciais);
+            fclose(arquivo);
+            exit(EXIT_FAILURE);
+        }
+
+        if(a < 0 || a >= *l || b < 0 || b >= *c){
+            free(*vivosIniciais);
+            fclose(arquivo);
+            exit(EXIT_FAILURE);
+        }
+
+        (*vivosIniciais)[i].x = a;
+        (*vivosIniciais)[i].y = b;
+    }
+
+    fclose(arquivo);
+}
+
+
+
+int main(int argc, char *argv[]){
+    struct timespec inicio_total, fim_total;
+    clock_gettime(CLOCK_MONOTONIC, &inicio_total);
+    
+    if(argc < 2){
+        fprintf(stderr, "Quantidade de argumentos inválidos.");
         return EXIT_FAILURE;
     }
     
-    Coordenadas *vivosIniciais = malloc(sizeof(Coordenadas) * n);
+    int log = !(argc > 2 && strcmp(argv[2], "no") == 0);
 
-    if(n > 0 && vivosIniciais == NULL){
-        fprintf(stderr, "Erro ao alocar coordenadas");
-        return EXIT_FAILURE;
-    }
+    // Leitura
+    LLU gen, l, c, n;
+    Coordenadas *vivosIniciais = NULL;
 
-    for(LLU i = 0; i < n; ++i){
-
-        LLU a, b;
-        if(scanf("%lld %lld", &a, &b) != 2){
-            free(vivosIniciais); return EXIT_FAILURE;
-        }
-
-        if(a < 0 || a >= l || b < 0 || b >= c){
-            free(vivosIniciais); return EXIT_FAILURE;
-        }
-
-        vivosIniciais[i].x = a;
-        vivosIniciais[i].y = b;
-    }
+    leitura(&gen, &l, &c, &n, &vivosIniciais, argv[1]);
+    
 
     // Alocação
     char *matrizSimulacao = calloc(l * c, sizeof(char));
-    char *matrizProxima = calloc(l * c, sizeof(char));
+    char *matrizProxima   = calloc(l * c, sizeof(char));
 
     if(matrizSimulacao == NULL || matrizProxima == NULL){
         fprintf(stderr, "Erro ao alocar matrizes");
@@ -165,7 +199,8 @@ int main(){
     double tempo_simulacao = (fim_simulacao.tv_sec - inicio_simlacao.tv_sec) + (fim_simulacao.tv_nsec - inicio_simlacao.tv_nsec) / 1e9;
                
     // Imprime
-    imprimeResultado(matrizSimulacao, genOriginal, l, c);
+    if(log)
+        imprimeResultado(matrizSimulacao, genOriginal, l, c);
     
     clock_gettime(CLOCK_MONOTONIC, &fim_total);
     double tempo_total = (fim_total.tv_sec - inicio_total.tv_sec) + (fim_total.tv_nsec - inicio_total.tv_nsec) / 1e9;
